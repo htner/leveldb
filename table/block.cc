@@ -81,8 +81,8 @@ class Block::Iter : public Iterator {
   uint32_t const num_restarts_; // Number of uint32_t entries in restart array
 
   // current_ is offset in data_ of current entry.  >= restarts_ if !Valid
-  uint32_t current_;
-  uint32_t restart_index_;  // Index of restart block in which current_ falls
+  uint32_t current_;                                                               // 当前的
+  uint32_t restart_index_;  // Index of restart block in which current_ falls         当前的restart_point index
   std::string key_;
   Slice value_;
   Status status_;
@@ -125,7 +125,7 @@ class Block::Iter : public Iterator {
     assert(num_restarts_ > 0);
   }
 
-  virtual bool Valid() const { return current_ < restarts_; }
+  virtual bool Valid() const { return current_ < restarts_; } 
   virtual Status status() const { return status_; }
   virtual Slice key() const {
     assert(Valid());
@@ -146,20 +146,20 @@ class Block::Iter : public Iterator {
 
     // Scan backwards to a restart point before current_
     const uint32_t original = current_;
-    while (GetRestartPoint(restart_index_) >= original) {
-      if (restart_index_ == 0) {
-        // No more entries
-        current_ = restarts_;
-        restart_index_ = num_restarts_;
+    while (GetRestartPoint(restart_index_) >= original) {   // 当前的第一个地址 >= 当前的
+      if (restart_index_ == 0) {                            // 没有了
+        // No more entries     
+        current_ = restarts_;                               // 跳到restarts的地址， 相当于设置Valid（） = false
+        restart_index_ = num_restarts_;                     // 跳到最后一个
         return;
       }
       restart_index_--;
     }
 
-    SeekToRestartPoint(restart_index_);
+    SeekToRestartPoint(restart_index_);                      // 跳到开始点
     do {
       // Loop until end of current entry hits the start of original entry
-    } while (ParseNextKey() && NextEntryOffset() < original);
+    } while (ParseNextKey() && NextEntryOffset() < original);        // 找到nextentryoffset == original的节点
   }
 
   virtual void Seek(const Slice& target) {
@@ -171,14 +171,14 @@ class Block::Iter : public Iterator {
       uint32_t mid = (left + right + 1) / 2;
       uint32_t region_offset = GetRestartPoint(mid);
       uint32_t shared, non_shared, value_length;
-      const char* key_ptr = DecodeEntry(data_ + region_offset,
-                                        data_ + restarts_,
+      const char* key_ptr = DecodeEntry(data_ + region_offset,   // 开始地址
+                                        data_ + restarts_,       // 结束地址为restarts开始的地址
                                         &shared, &non_shared, &value_length);
       if (key_ptr == nullptr || (shared != 0)) {
         CorruptionError();
         return;
       }
-      Slice mid_key(key_ptr, non_shared);
+      Slice mid_key(key_ptr, non_shared);   // start point的key为全key, 非压缩的
       if (Compare(mid_key, target) < 0) {
         // Key at "mid" is smaller than "target".  Therefore all
         // blocks before "mid" are uninteresting.
@@ -191,7 +191,7 @@ class Block::Iter : public Iterator {
     }
 
     // Linear search (within restart block) for first key >= target
-    SeekToRestartPoint(left);
+    SeekToRestartPoint(left);   // 从底位找起
     while (true) {
       if (!ParseNextKey()) {
         return;
@@ -209,7 +209,7 @@ class Block::Iter : public Iterator {
 
   virtual void SeekToLast() {
     SeekToRestartPoint(num_restarts_ - 1);
-    while (ParseNextKey() && NextEntryOffset() < restarts_) {
+    while (ParseNextKey() && NextEntryOffset() < restarts_) {    // 找到最后一个
       // Keep skipping
     }
   }
@@ -245,7 +245,7 @@ class Block::Iter : public Iterator {
       key_.append(p, non_shared);
       value_ = Slice(p + non_shared, value_length);
       while (restart_index_ + 1 < num_restarts_ &&
-             GetRestartPoint(restart_index_ + 1) < current_) {
+             GetRestartPoint(restart_index_ + 1) < current_) {  // restart_index是否已经变化，变化的话，++即可
         ++restart_index_;
       }
       return true;
