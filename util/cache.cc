@@ -43,9 +43,9 @@ namespace {
 struct LRUHandle {
   void* value;
   void (*deleter)(const Slice&, void* value);
-  LRUHandle* next_hash;
-  LRUHandle* next;
-  LRUHandle* prev;
+  LRUHandle* next_hash;  // 作为HashTable中的节点，指向hash值相同的节点（解决hash冲突采用链地址法）
+  LRUHandle* next;       // 作为LRUCache中的节点，指向后继
+  LRUHandle* prev;        // 作为LRUCache中的节点，指向前驱
   size_t charge;      // TODO(opt): Only allow uint32_t?
   size_t key_length;
   bool in_cache;      // Whether entry is in the cache.
@@ -67,7 +67,7 @@ struct LRUHandle {
 // table implementations in some of the compiler/runtime combinations
 // we have tested.  E.g., readrandom speeds up by ~5% over the g++
 // 4.4.3's builtin hashtable.
-class HandleTable {
+class HandleTable {                 // 只维护hash部分
  public:
   HandleTable() : length_(0), elems_(0), list_(nullptr) { Resize(); }
   ~HandleTable() { delete[] list_; }

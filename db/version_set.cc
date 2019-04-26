@@ -499,6 +499,7 @@ bool Version::OverlapInLevel(int level,
                                smallest_user_key, largest_user_key);
 }
 
+// https://zhuanlan.zhihu.com/p/46718964 介绍如何做的
 int Version::PickLevelForMemTableOutput(
     const Slice& smallest_user_key,
     const Slice& largest_user_key) {
@@ -513,7 +514,9 @@ int Version::PickLevelForMemTableOutput(
       if (OverlapInLevel(level + 1, &smallest_user_key, &largest_user_key)) {
         break;
       }
-      if (level + 2 < config::kNumLevels) {
+      if (level + 2 < config::kNumLevels) {、
+        // level 2 冲突过多，保留在level 0?  若某些范围的key更新比较频繁，后续往高层compaction IO消耗也很大。
+        // 这时尽量留在level 0， 下次由compaction 处于分散IO?
         // Check that file does not overlap too many grandparent bytes.
         GetOverlappingInputs(level + 2, &start, &limit, &overlaps);
         const int64_t sum = TotalFileSize(overlaps);
@@ -600,7 +603,7 @@ std::string Version::DebugString() const {
 
 // A helper class so we can efficiently apply a whole sequence
 // of edits to a particular state without creating intermediate
-// Versions that contain full copies of the intermediate state.
+// Versions that contain full copies of the intermediate state.        一次应用，减少变更
 class VersionSet::Builder {
  private:
   // Helper to sort by v->files_[file_number].smallest
@@ -621,12 +624,12 @@ class VersionSet::Builder {
   typedef std::set<FileMetaData*, BySmallestKey> FileSet;
   struct LevelState {
     std::set<uint64_t> deleted_files;
-    FileSet* added_files;
+    FileSet* added_files;               
   };
 
   VersionSet* vset_;
   Version* base_;
-  LevelState levels_[config::kNumLevels];
+  LevelState levels_[config::kNumLevels];          // 每层的信息
 
  public:
   // Initialize a builder with the files from *base and other info from *vset
@@ -637,7 +640,7 @@ class VersionSet::Builder {
     BySmallestKey cmp;
     cmp.internal_comparator = &vset_->icmp_;
     for (int level = 0; level < config::kNumLevels; level++) {
-      levels_[level].added_files = new FileSet(cmp);
+      levels_[level].added_files = new FileSet(cmp);          
     }
   }
 
